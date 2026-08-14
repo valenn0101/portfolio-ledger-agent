@@ -12,6 +12,7 @@
   grid-template-columns: minmax(0, 1.1fr) minmax(340px, .72fr);
   gap: clamp(28px, 7vw, 90px);
   align-items: center;
+  border-top: 3px solid var(--ink);
 }
 
 .login-intro h1 {
@@ -37,16 +38,20 @@
 
 .login-principles span {
   padding: 8px 11px;
-  border: 1px solid rgba(15, 107, 97, .16);
-  border-radius: 999px;
-  background: rgba(220, 239, 232, .72);
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
   color: var(--teal-dark);
-  font-size: .7rem;
-  font-weight: 800;
+  font-family: var(--mono);
+  font-size: .58rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
 }
 
 .login-card {
-  padding: 28px;
+  padding: 28px 0 28px 40px;
+  border-left: 1px solid var(--line);
 }
 
 .login-copy {
@@ -115,8 +120,10 @@
   }
 
   .login-card {
-    padding: 21px;
-    border-radius: 19px;
+    padding: 24px 0 0;
+    border-top: 3px solid var(--teal);
+    border-left: 0;
+    border-radius: 0;
   }
 }
 

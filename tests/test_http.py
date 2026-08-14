@@ -176,7 +176,9 @@ class HttpSmokeTests(unittest.TestCase):
         with urllib.request.urlopen(self.base_url + "/", timeout=5) as response:
             body = response.read().decode("utf-8")
         self.assertIn("Portfolio Ledger Agent", body)
-        self.assertIn("Buscar oportunidades con fuentes", body)
+        self.assertIn("ASISTENTE PERSONAL DE INVERSIONES", body)
+        self.assertIn("<h2 id=\"research-title\">Investigación</h2>", body)
+        self.assertEqual(3, body.count("section-number"))
         self.assertIn("Incluir opinión y zonas de compra o venta", body)
         self.assertIn("Fuentes gratuitas que prioriza el agente", body)
         self.assertIn("research-run-status", body)
