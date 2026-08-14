@@ -1,0 +1,2 @@
+-r requirements.txt
+# La integración con OpenAI usa urllib de la biblioteca estándar.

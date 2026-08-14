@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Asistente local para registrar movimientos de inversión" />
+    <title>Portfolio Ledger Agent</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">ASISTENTE PERSONAL</p>
+        <h1>Portfolio Ledger Agent</h1>
+        <p class="subtitle">Registrá movimientos e investigá oportunidades con fuentes verificables.</p>
+      </div>
+      <div class="status-pills">
+        <span id="db-status" class="pill ok">Base local</span>
+        <span id="excel-status" class="pill">Excel</span>
+        <span id="ai-status" class="pill">Modo local</span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="card chat-card">
+        <div class="card-heading">
+          <div>
+            <p class="eyebrow">CONVERSACIÓN</p>
+            <h2>Registrar un movimiento</h2>
+          </div>
+          <button id="help-button" class="ghost-button" type="button">Ayuda</button>
+        </div>
+
+        <div id="messages" class="messages" aria-live="polite">
+          <article class="message assistant">
+            <div class="avatar">PL</div>
+            <div class="bubble">
+              Hola. Podés decirme, por ejemplo: “Compré 3 AAPL a 180 USD en Wallbit”.
+              Antes de guardar te voy a mostrar todos los datos.
+            </div>
+          </article>
+        </div>
+
+        <div class="examples" aria-label="Ejemplos rápidos">
+          <button type="button" data-message="Compré 3 AAPL a 180 USD en Wallbit con 1 de comisión">Compra completa</button>
+          <button type="button" data-message="Vendí 2 Microsoft">Venta incompleta</button>
+          <button type="button" data-message="¿Qué me falta?">Datos faltantes</button>
+          <button type="button" data-message="Resumen de cartera">Mi cartera</button>
+          <button type="button" data-message="Investigá las noticias y el consenso reciente sobre V">Investigar Visa</button>
+        </div>
+
+        <div id="draft-actions" class="draft-actions hidden">
+          <button id="confirm-button" class="primary-button" type="button">Confirmar y guardar</button>
+          <button id="cancel-button" class="danger-button" type="button">Cancelar borrador</button>
+        </div>
+
+        <form id="composer" class="composer">
+          <label class="sr-only" for="message-input">Mensaje</label>
+          <textarea id="message-input" rows="2" placeholder="Ej.: Vendí 2 MSFT a 425 USD en Wallbit ayer"></textarea>
+          <button class="send-button" type="submit" aria-label="Enviar">Enviar</button>
+        </form>
+        <p class="safety-note">Nada se guarda sin tu confirmación. Este módulo no envía órdenes al broker.</p>
+      </section>
+
+      <aside class="side-column">
+        <section class="card summary-card">
+          <div class="card-heading compact">
+            <div>
+              <p class="eyebrow">ESTADO</p>
+              <h2>Tu registro</h2>
+            </div>
+            <a class="ghost-button link-button" href="/api/excel">Descargar Excel</a>
+          </div>
+          <div class="metrics">
+            <div><strong id="movement-count">0</strong><span>confirmados</span></div>
+            <div><strong id="pending-count">0</strong><span>pendientes</span></div>
+            <div><strong id="error-count">0</strong><span>sin copiar</span></div>
+            <div class="cash-metric"><strong id="cash-amount">—</strong><span>efectivo disponible</span></div>
+          </div>
+          <p id="system-note" class="system-note">Verificando archivos…</p>
+        </section>
+
+        <section class="card settings-card">
+          <div class="card-heading compact">
+            <div>
+              <p class="eyebrow">CONFIGURACIÓN</p>
+              <h2>Datos habituales</h2>
+            </div>
+          </div>
+          <p class="small-copy">Si los completás, el agente los propone automáticamente y te avisa que fueron inferidos.</p>
+          <form id="settings-form">
+            <label for="default-account">Cuenta o broker habitual</label>
+            <input id="default-account" name="default_account" placeholder="Ej.: Wallbit" />
+            <label for="default-currency">Moneda habitual</label>
+            <select id="default-currency" name="default_currency">
+              <option value="">Sin definir</option>
+              <option value="USDC">USDC</option>
+              <option value="USD">USD</option>
+              <option value="ARS">ARS</option>
+              <option value="EUR">EUR</option>
+              <option value="BRL">BRL</option>
+            </select>
+            <button class="secondary-button" type="submit">Guardar configuración</button>
+          </form>
+        </section>
+
+        <section class="card history-card">
+          <div class="card-heading compact">
+            <div>
+              <p class="eyebrow">HISTORIAL</p>
+              <h2>Últimos movimientos</h2>
+            </div>
+          </div>
+          <div id="history" class="history-list">
+            <p class="empty-state">Todavía no hay movimientos confirmados.</p>
+          </div>
+        </section>
+
+        <section class="principles-card">
+          <span>CRITERIO</span>
+          <h3>Hechos antes que entusiasmo</h3>
+          <p>El agente separa evidencia, consenso externo y lectura propia. Una oportunidad es una candidata para estudiar, no una compra segura.</p>
+        </section>
+      </aside>
+    </main>
+
+    <section class="portfolio-workspace" aria-labelledby="portfolio-title">
+      <div class="card portfolio-card">
+        <div class="portfolio-heading">
+          <div>
+            <p class="eyebrow">COTIZACIONES</p>
+            <h2 id="portfolio-title">Tus inversiones hoy</h2>
+            <p class="portfolio-subtitle">Precio actual, movimiento diario y resultado contra tu costo promedio.</p>
+          </div>
+          <div class="portfolio-actions">
+            <span id="portfolio-quote-status" class="pill">Cargando precios</span>
+            <button id="quote-refresh" class="ghost-button" type="button">Actualizar</button>
+          </div>
+        </div>
+
+        <div class="portfolio-metrics" aria-label="Resumen de valuación">
+          <div>
+            <span>Inversiones</span>
+            <strong id="portfolio-market-value">—</strong>
+            <small>valor de mercado</small>
+          </div>
+          <div>
+            <span>Total con efectivo</span>
+            <strong id="portfolio-total-value">—</strong>
+            <small>cartera estimada</small>
+          </div>
+          <div>
+            <span>Hoy</span>
+            <strong id="portfolio-day-change">—</strong>
+            <small id="portfolio-day-percent">contra cierre anterior</small>
+          </div>
+          <div>
+            <span>Resultado</span>
+            <strong id="portfolio-unrealized-change">—</strong>
+            <small id="portfolio-unrealized-percent">no realizado</small>
+          </div>
+        </div>
+
+        <div class="portfolio-table-wrap">
+          <table class="portfolio-table">
+            <thead>
+              <tr>
+                <th scope="col">Inversión</th>
+                <th scope="col">Tenencia</th>
+                <th scope="col">Cotización</th>
+                <th scope="col">Hoy</th>
+                <th scope="col">Resultado</th>
+                <th scope="col">Valor actual</th>
+              </tr>
+            </thead>
+            <tbody id="portfolio-quotes">
+              <tr><td colspan="6" class="portfolio-empty">Consultando las cotizaciones guardadas…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="portfolio-footnotes">
+          <p id="portfolio-freshness">Esperando datos de mercado.</p>
+          <p id="portfolio-currency-note">Los totales se expresan en USD.</p>
+        </div>
+        <div id="portfolio-warnings" class="portfolio-warnings hidden" role="status"></div>
+      </div>
+    </section>
+
+    <section class="research-workspace" aria-labelledby="research-title">
+      <div class="card research-controls">
+        <div class="card-heading compact">
+          <div>
+            <p class="eyebrow">INVESTIGACIÓN</p>
+            <h2 id="research-title">Buscar oportunidades con fuentes</h2>
+          </div>
+          <span id="research-status" class="pill">GPT + web</span>
+        </div>
+
+        <form id="research-form">
+          <label for="research-type">Tipo de análisis</label>
+          <select id="research-type" name="research_type">
+            <option value="asset">Activo o empresa</option>
+            <option value="opportunities">Oportunidades para investigar</option>
+            <option value="portfolio">Revisión de mi cartera</option>
+            <option value="question">Pregunta libre</option>
+          </select>
+
+          <label for="research-query">¿Qué querés saber?</label>
+          <textarea id="research-query" name="query" rows="5" maxlength="2000" placeholder="Ej.: Analizá Visa: resultados recientes, valuación, consenso, riesgos y condiciones que justificarían seguirla de cerca."></textarea>
+          <label class="advice-option" for="research-advice">
+            <input id="research-advice" name="include_advice" type="checkbox">
+            <span>
+              <strong>Incluir opinión y zonas de compra o venta</strong>
+              <small>Agrega rangos orientativos de entrada, mantenimiento y reducción/venta, con fecha, método y confianza.</small>
+            </span>
+          </label>
+          <button id="research-submit" class="primary-button" type="submit">Investigar con fuentes</button>
+          <div id="research-run-status" class="research-run-status idle" role="status" aria-live="polite">
+            <span class="run-marker" aria-hidden="true"></span>
+            <span class="run-copy">
+              <strong id="research-run-title">Listo para investigar</strong>
+              <small id="research-run-detail">El estado cambiará cuando el informe termine o quede incompleto.</small>
+            </span>
+            <span id="research-elapsed" class="research-elapsed">—</span>
+          </div>
+        </form>
+
+        <div class="research-presets" aria-label="Consultas rápidas">
+          <button type="button" data-research-type="portfolio" data-research-query="Revisá mi cartera actual: concentración, riesgos, noticias relevantes y qué debería vigilar.">Revisar mi cartera</button>
+          <button type="button" data-research-type="opportunities" data-research-query="Buscá hasta cinco acciones de Estados Unidos que merezcan investigación por calidad, valuación o un catalizador verificable. Comparalas con mi cartera y efectivo disponible.">Explorar candidatas</button>
+          <button type="button" data-research-type="asset" data-research-query="Analizá Visa (V): resultados recientes, valuación, consenso, riesgos y condiciones que justificarían seguirla de cerca.">Analizar V</button>
+        </div>
+
+        <p class="privacy-note">La consulta y un resumen de posiciones y efectivo se envían a OpenAI. No se envían tus credenciales ni el historial completo de operaciones.</p>
+
+        <details class="free-sources-panel">
+          <summary>Fuentes gratuitas que prioriza el agente</summary>
+          <p>Las fuentes web se consultan durante la investigación y los adaptadores activos muestran su estado de conexión.</p>
+          <div id="free-source-catalog" class="free-source-catalog">
+            <span class="empty-state">Cargando catálogo…</span>
+          </div>
+        </details>
+
+        <div class="research-history-heading">
+          <strong>Investigaciones guardadas</strong>
+          <span id="research-count">0</span>
+        </div>
+        <div id="research-history" class="research-history">
+          <p class="empty-state">Todavía no hay investigaciones guardadas.</p>
+        </div>
+      </div>
+
+      <article class="card research-result-card" aria-live="polite">
+        <div class="research-result-heading">
+          <div>
+            <p class="eyebrow">INFORME</p>
+            <h2 id="research-result-title">Elegí una consulta para comenzar</h2>
+          </div>
+          <div class="research-result-state">
+            <span id="research-completion-status" class="report-status neutral">Sin ejecutar</span>
+            <span id="research-meta" class="research-meta">Sin fecha</span>
+          </div>
+        </div>
+        <div id="research-answer" class="research-answer empty-result">
+          Acá aparecerán los hechos verificados, el consenso externo, la lectura del agente, los riesgos y los próximos pasos.
+        </div>
+        <section id="research-sources-section" class="research-sources hidden">
+          <h3 id="research-sources-title">Fuentes citadas</h3>
+          <p id="research-source-note" class="research-source-note"></p>
+          <div id="research-sources" class="source-list"></div>
+        </section>
+        <p class="research-disclaimer">Las zonas de compra o venta son referencias orientativas basadas en fuentes fechadas, no órdenes ni garantías de rentabilidad. El agente no opera en el broker ni reemplaza tu decisión.</p>
+      </article>
+    </section>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

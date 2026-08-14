@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+.env
+.env.*
+!.env.example
+data/**
+!data/.gitkeep
+
+# Importaciones y verificaciones creadas desde la cartera personal.
+scripts/import_portfolio_*.py
+scripts/verify_portfolio_*.py
+
+# Dependencias vendorizadas de la primera versión; se instalan con pip.
+src/openpyxl/
+src/et_xmlfile/
+third_party/

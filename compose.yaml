@@ -1,0 +1,14 @@
+name: portfolio-ledger-agent
+
+services:
+  app:
+    build: .
+    image: portfolio-ledger-agent:local
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8765:8765"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
