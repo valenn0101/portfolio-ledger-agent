@@ -24,8 +24,27 @@ const researchQuery = document.getElementById("research-query");
 const researchAdvice = document.getElementById("research-advice");
 const researchSubmit = document.getElementById("research-submit");
 const quoteRefresh = document.getElementById("quote-refresh");
+const logoutButton = document.getElementById("logout-button");
 const researchReports = new Map();
 const defaultDocumentTitle = document.title;
+
+async function apiFetch(input, init) {
+  const response = await fetch(input, init);
+  if (response.status === 401) {
+    window.location.replace("/login?expired=1");
+    throw new Error("La sesión venció.");
+  }
+  return response;
+}
+
+async function loadSession() {
+  const response = await apiFetch("/api/session");
+  const session = await response.json();
+  logoutButton.classList.toggle("hidden", !session.auth_enabled);
+  if (session.auth_enabled && session.username) {
+    logoutButton.title = `Sesión de ${session.username}`;
+  }
+}
 
 function addMessage(role, text, sources = []) {
   const article = document.createElement("article");
@@ -69,7 +88,7 @@ async function sendMessage(text) {
   input.value = "";
   setBusy(true);
   try {
-    const response = await fetch("/api/message", {
+    const response = await apiFetch("/api/message", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session_id: sessionId, message: clean }),
@@ -96,8 +115,8 @@ async function sendMessage(text) {
 
 async function refreshDashboard() {
   const [statusResponse, historyResponse] = await Promise.all([
-    fetch(`/api/status?session_id=${sessionId}`),
-    fetch("/api/movements"),
+    apiFetch(`/api/status?session_id=${sessionId}`),
+    apiFetch("/api/movements"),
     loadPortfolioValuation(),
   ]);
   const status = await statusResponse.json();
@@ -141,7 +160,7 @@ async function loadPortfolioValuation(refresh = false) {
   status.className = "pill";
   button.disabled = true;
   try {
-    const response = await fetch(`/api/portfolio/valuation${refresh ? "?refresh=1" : ""}`);
+    const response = await apiFetch(`/api/portfolio/valuation${refresh ? "?refresh=1" : ""}`);
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || "No se pudieron cargar las cotizaciones.");
     renderPortfolioValuation(payload);
@@ -349,7 +368,7 @@ function formatMarketTimestamp(value) {
 }
 
 async function loadResearchHistory() {
-  const response = await fetch("/api/research?limit=10");
+  const response = await apiFetch("/api/research?limit=10");
   if (!response.ok) throw new Error("No se pudo cargar la investigación guardada.");
   const payload = await response.json();
   const reports = payload.reports || [];
@@ -360,7 +379,7 @@ async function loadResearchHistory() {
 }
 
 async function loadFreeSourceCatalog() {
-  const response = await fetch("/api/research/sources");
+  const response = await apiFetch("/api/research/sources");
   if (!response.ok) throw new Error("No se pudo cargar el catálogo de fuentes.");
   const payload = await response.json();
   const container = document.getElementById("free-source-catalog");
@@ -750,7 +769,7 @@ async function runResearch(query, type) {
   answer.className = "research-answer empty-result loading-result";
   answer.textContent = "GPT está consultando información reciente y preparando un informe auditable.";
   try {
-    const response = await fetch("/api/research", {
+    const response = await apiFetch("/api/research", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -844,7 +863,7 @@ quoteRefresh.addEventListener("click", () => loadPortfolioValuation(true));
 document.getElementById("settings-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
-  const response = await fetch("/api/settings", {
+  const response = await apiFetch("/api/settings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(Object.fromEntries(form.entries())),
@@ -867,6 +886,15 @@ document.querySelectorAll("[data-research-query]").forEach((button) => {
   });
 });
 
-Promise.all([refreshDashboard(), loadResearchHistory(), loadFreeSourceCatalog()]).catch((error) => {
+logoutButton.addEventListener("click", async () => {
+  logoutButton.disabled = true;
+  try {
+    await fetch("/api/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+  } finally {
+    window.location.replace("/login");
+  }
+});
+
+Promise.all([loadSession(), refreshDashboard(), loadResearchHistory(), loadFreeSourceCatalog()]).catch((error) => {
   document.getElementById("system-note").textContent = `No pude leer el estado: ${error.message}`;
 });

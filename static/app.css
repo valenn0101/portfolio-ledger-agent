@@ -22,6 +22,7 @@ body {
     linear-gradient(180deg, #f8f7f1 0%, var(--paper) 100%);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 button, input, textarea, select { font: inherit; }
@@ -50,10 +51,12 @@ h1 { margin-bottom: 6px; font-family: Georgia, serif; font-size: clamp(2.1rem, 5
 h2 { margin-bottom: 0; font-family: Georgia, serif; font-size: 1.45rem; font-weight: 500; }
 .subtitle { margin-bottom: 0; color: var(--muted); font-size: 1rem; }
 
+.topbar-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
 .status-pills { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .pill { padding: 8px 11px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.55); color: var(--muted); font-size: .78rem; font-weight: 700; }
 .pill.ok { background: var(--mint); border-color: transparent; color: var(--teal-dark); }
 .pill.warning { background: #fff0ce; color: #78510b; border-color: transparent; }
+.logout-button { flex: 0 0 auto; min-height: 38px; white-space: nowrap; }
 
 .layout {
   max-width: 1420px;
@@ -65,9 +68,9 @@ h2 { margin-bottom: 0; font-family: Georgia, serif; font-size: 1.45rem; font-wei
   align-items: start;
 }
 
-.card { background: rgba(255, 253, 248, .95); border: 1px solid rgba(217, 221, 213, .9); border-radius: 22px; box-shadow: var(--shadow); }
+.card { min-width: 0; background: rgba(255, 253, 248, .95); border: 1px solid rgba(217, 221, 213, .9); border-radius: 22px; box-shadow: var(--shadow); }
 .chat-card { padding: 24px; min-height: 720px; display: flex; flex-direction: column; }
-.side-column { display: grid; gap: 16px; }
+.side-column { display: grid; min-width: 0; gap: 16px; }
 .summary-card, .settings-card, .history-card { padding: 20px; }
 
 .card-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
@@ -77,6 +80,7 @@ h2 { margin-bottom: 0; font-family: Georgia, serif; font-size: 1.45rem; font-wei
   border: 0;
   border-radius: 12px;
   cursor: pointer;
+  min-height: 42px;
   transition: transform .15s ease, background .15s ease, opacity .15s ease;
 }
 .ghost-button:hover, .secondary-button:hover, .danger-button:hover, .primary-button:hover, .send-button:hover, .examples button:hover { transform: translateY(-1px); }
@@ -270,32 +274,46 @@ textarea:focus, input:focus, select:focus { border-color: var(--teal); box-shado
 
 @media (max-width: 930px) {
   .topbar { align-items: flex-start; flex-direction: column; }
+  .topbar-actions { width: 100%; justify-content: space-between; }
   .status-pills { justify-content: flex-start; }
   .layout { grid-template-columns: 1fr; }
   .portfolio-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .research-workspace { grid-template-columns: 1fr; }
-  .chat-card { min-height: 650px; }
+  .chat-card { min-height: 620px; }
 }
 
 @media (max-width: 600px) {
-  .topbar { padding: 24px 16px 18px; }
-  .layout { padding: 0 12px 32px; }
+  h1 { font-size: clamp(2rem, 11vw, 3rem); line-height: 1; }
+  h2 { font-size: 1.28rem; }
+  .subtitle { font-size: .88rem; line-height: 1.45; }
+  .topbar { padding: max(22px, env(safe-area-inset-top)) 16px 18px; gap: 18px; }
+  .topbar-actions { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .status-pills { gap: 6px; }
+  .pill { padding: 7px 9px; font-size: .69rem; }
+  .logout-button { width: 100%; }
+  .layout { padding: 0 12px 32px; gap: 14px; }
   .portfolio-workspace { padding: 0 12px 32px; }
-  .research-workspace { padding: 0 12px 36px; }
+  .research-workspace { padding: 0 12px max(36px, env(safe-area-inset-bottom)); gap: 14px; }
   .chat-card, .summary-card, .settings-card, .history-card { padding: 16px; border-radius: 18px; }
   .research-controls, .research-result-card { padding: 16px; border-radius: 18px; }
   .portfolio-card { padding: 16px; border-radius: 18px; }
+  .card-heading { align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+  .chat-card { min-height: 0; }
+  .messages { min-height: 340px; max-height: min(54svh, 520px); padding: 18px 0; }
+  .message { gap: 8px; }
+  .avatar { flex-basis: 30px; width: 30px; height: 30px; border-radius: 9px; }
   .portfolio-heading { flex-direction: column; }
   .portfolio-actions { width: 100%; justify-content: space-between; }
-  .portfolio-metrics { grid-template-columns: 1fr; }
-  .portfolio-metrics > div { min-height: 96px; }
+  .portfolio-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .portfolio-metrics > div { min-height: 104px; padding: 13px; }
+  .portfolio-metrics strong { font-size: clamp(1.1rem, 5.5vw, 1.55rem); overflow-wrap: anywhere; }
   .portfolio-table-wrap { overflow: visible; border: 0; background: transparent; }
   .portfolio-table { min-width: 0; }
   .portfolio-table thead { display: none; }
   .portfolio-table, .portfolio-table tbody, .portfolio-table tr, .portfolio-table td { display: block; width: 100%; }
   .portfolio-table tbody { display: grid; gap: 10px; }
   .portfolio-table tr { overflow: hidden; border: 1px solid var(--line); border-radius: 13px; background: white; }
-  .portfolio-table td { display: grid; grid-template-columns: 105px minmax(0, 1fr); align-items: center; gap: 12px; padding: 10px 12px; text-align: right; }
+  .portfolio-table td { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 12px; text-align: right; }
   .portfolio-table td::before { content: attr(data-label); color: var(--muted); font-size: .62rem; font-weight: 850; letter-spacing: .04em; text-align: left; text-transform: uppercase; }
   .portfolio-table td:first-child { padding-top: 13px; }
   .portfolio-table td:last-child { padding-bottom: 13px; border-bottom: 0; }
@@ -303,12 +321,42 @@ textarea:focus, input:focus, select:focus { border-color: var(--teal); box-shado
   .portfolio-table .portfolio-empty::before { content: none; }
   .portfolio-cell-value, .portfolio-identity { justify-items: end; }
   .portfolio-footnotes { flex-direction: column; gap: 5px; }
+  .examples { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .examples button { padding: 9px; }
   .composer { grid-template-columns: 1fr; }
-  .send-button { min-height: 46px; }
-  .bubble { max-width: 92%; }
+  textarea, input, select { font-size: 1rem; }
+  .send-button { min-height: 48px; }
+  .bubble { max-width: calc(100% - 38px); padding: 12px 13px; font-size: .88rem; overflow-wrap: anywhere; }
+  .message.user .bubble { max-width: 94%; }
   .draft-actions { flex-direction: column; }
+  .draft-actions button { width: 100%; }
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metrics .cash-metric { grid-column: 1 / -1; }
+  .history-item { grid-template-columns: 42px minmax(0, 1fr); }
+  .history-main { min-width: 0; }
+  .history-main strong, .history-main span { overflow-wrap: anywhere; }
+  .history-date { grid-column: 2; }
   .research-result-heading { flex-direction: column; }
   .research-result-state { justify-items: start; }
   .research-meta { text-align: left; }
+  .research-result-card { min-height: 0; }
+  .research-answer { padding: 19px 0; font-size: .86rem; line-height: 1.65; }
+  .research-answer .price-zone-section { margin: 20px -3px; padding: 14px 13px 1px; }
+  .research-run-status { grid-template-columns: 12px minmax(0, 1fr); }
+  .research-elapsed { grid-column: 2; }
+  .free-source-item > span { align-items: center; }
   .source-list { grid-template-columns: 1fr; }
+  .source-list a { min-width: 0; }
+  .source-copy strong, .source-copy small { white-space: normal; overflow-wrap: anywhere; }
+}
+
+@media (max-width: 380px) {
+  .topbar { padding-inline: 12px; }
+  .layout, .portfolio-workspace, .research-workspace { padding-inline: 8px; }
+  .examples { grid-template-columns: 1fr; }
+  .portfolio-metrics { grid-template-columns: 1fr; }
+  .portfolio-metrics > div { min-height: 88px; }
+  .portfolio-table td { grid-template-columns: 1fr; text-align: left; }
+  .portfolio-table td::before { margin-bottom: -4px; }
+  .portfolio-cell-value, .portfolio-identity { justify-items: start; }
 }

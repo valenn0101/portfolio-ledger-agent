@@ -1,0 +1,131 @@
+.login-page {
+  display: grid;
+  min-height: 100svh;
+  overflow-x: hidden;
+}
+
+.login-shell {
+  width: min(1040px, calc(100% - 48px));
+  margin: auto;
+  padding: 48px 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(340px, .72fr);
+  gap: clamp(28px, 7vw, 90px);
+  align-items: center;
+}
+
+.login-intro h1 {
+  max-width: 650px;
+  font-size: clamp(2.7rem, 7vw, 5.3rem);
+  line-height: .96;
+}
+
+.login-intro > p:not(.eyebrow) {
+  max-width: 600px;
+  margin: 24px 0 0;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.login-principles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 28px;
+}
+
+.login-principles span {
+  padding: 8px 11px;
+  border: 1px solid rgba(15, 107, 97, .16);
+  border-radius: 999px;
+  background: rgba(220, 239, 232, .72);
+  color: var(--teal-dark);
+  font-size: .7rem;
+  font-weight: 800;
+}
+
+.login-card {
+  padding: 28px;
+}
+
+.login-copy {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: .8rem;
+  line-height: 1.5;
+}
+
+.login-form {
+  display: grid;
+  gap: 9px;
+  margin-top: 24px;
+}
+
+.login-form label {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: .75rem;
+  font-weight: 800;
+}
+
+.login-form input {
+  min-height: 48px;
+  padding: 11px 12px;
+  font-size: 1rem;
+}
+
+.login-form button {
+  min-height: 48px;
+  margin-top: 10px;
+}
+
+.login-form button:disabled {
+  cursor: wait;
+  opacity: .62;
+}
+
+.login-message {
+  min-height: 1.3em;
+  margin: 4px 0 0;
+  color: #8b3527;
+  font-size: .76rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .login-shell {
+    width: min(100% - 28px, 520px);
+    padding: max(28px, env(safe-area-inset-top)) 0 max(28px, env(safe-area-inset-bottom));
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .login-intro h1 {
+    font-size: clamp(2.45rem, 13vw, 4rem);
+  }
+
+  .login-intro > p:not(.eyebrow) {
+    margin-top: 16px;
+    font-size: .9rem;
+  }
+
+  .login-principles {
+    margin-top: 18px;
+  }
+
+  .login-card {
+    padding: 21px;
+    border-radius: 19px;
+  }
+}
+
+@media (max-width: 380px) {
+  .login-principles {
+    display: grid;
+  }
+
+  .login-principles span {
+    text-align: center;
+  }
+}

@@ -2,7 +2,8 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#084b45" />
     <meta name="description" content="Asistente local para registrar movimientos de inversión" />
     <title>Portfolio Ledger Agent</title>
     <link rel="stylesheet" href="/app.css" />
@@ -14,10 +15,15 @@
         <h1>Portfolio Ledger Agent</h1>
         <p class="subtitle">Registrá movimientos e investigá oportunidades con fuentes verificables.</p>
       </div>
-      <div class="status-pills">
-        <span id="db-status" class="pill ok">Base local</span>
-        <span id="excel-status" class="pill">Excel</span>
-        <span id="ai-status" class="pill">Modo local</span>
+      <div class="topbar-actions">
+        <div class="status-pills">
+          <span id="db-status" class="pill ok">Base local</span>
+          <span id="excel-status" class="pill">Excel</span>
+          <span id="ai-status" class="pill">Modo local</span>
+        </div>
+        <button id="logout-button" class="ghost-button logout-button hidden" type="button">
+          Cerrar sesión
+        </button>
       </div>
     </header>
 

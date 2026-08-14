@@ -22,6 +22,8 @@ A local-first investment ledger operated through a conversational Spanish interf
 - Visible running, completed, incomplete, and error states with elapsed time.
 - An optional orientative opinion labelled Buy, Hold, Reduce, Sell, or Inconclusive, plus dated entry/hold/reduce-or-sell price zones when the evidence is sufficient.
 - A local parser fallback when OpenAI is unavailable.
+- Optional single-user login with signed, expiring, HTTP-only session cookies.
+- Responsive layouts for the chat, portfolio cards, research reports, and login screen.
 - Docker support with persistent local data.
 
 The web interface is currently in Spanish because the first use case is a Spanish-speaking personal portfolio.
@@ -70,6 +72,39 @@ docker compose down
 The server reads the `PORT` environment variable when a hosting provider assigns one. Local Docker Compose continues to use port `8765` by default.
 
 On Linux/WSL, Compose defaults to UID/GID `1000:1000` so SQLite can write to the bind mount without running the container as root. If your account uses different values, set `LOCAL_UID` and `LOCAL_GID` in `.env` using the output of `id -u` and `id -g`.
+
+## Private access
+
+Authentication remains optional for local development. Enable it for every deployment reachable from the internet:
+
+```dotenv
+APP_REQUIRE_AUTH=1
+APP_USERNAME=your_username
+APP_PASSWORD=a-long-unique-password
+APP_SESSION_SECRET=a-random-secret-with-at-least-32-characters
+APP_SESSION_HOURS=12
+APP_SECURE_COOKIES=auto
+```
+
+Generate a session secret without reusing the login password:
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+The server refuses to start when authentication is enabled with missing or weak values. Passwords and session secrets are read only from the environment. The browser receives a signed, expiring, HTTP-only cookie; API credentials and the login password are never stored in browser storage. Repeated failed logins are temporarily throttled. `/api/health` remains public so a hosting platform can monitor the service, while the interface, Excel download, and all portfolio APIs require a valid session.
+
+## Deploy on Railway
+
+The repository includes `railway.toml` and a Docker health check. A straightforward private single-user deployment is:
+
+1. Create a Railway project from the GitHub repository and let it detect the `Dockerfile`.
+2. Add a persistent volume mounted at `/app/data`; this keeps SQLite and the generated workbook across redeploys.
+3. Add the OpenAI and market-data variables plus all `APP_*` authentication variables shown above. Use `APP_SECURE_COOKIES=always` for the Railway HTTPS domain.
+4. Set `RAILWAY_RUN_UID=0`. Railway volumes are mounted as root, so this runtime override lets the existing image write to `/app/data`.
+5. Generate a public domain only after the health check is green and authentication has been tested.
+
+Railway supplies `PORT` automatically. Do not add the local `data/` directory or `.env` to the service image. See Railway's official [volume guide](https://docs.railway.com/volumes) and [Dockerfile deployment guide](https://docs.railway.com/guides/dockerfiles) for the current platform steps and limits.
 
 ## Run without Docker
 
@@ -145,7 +180,7 @@ Before making a fork public, run `git status --ignored` and confirm that no pers
 
 SQLite is a good fit for a local, single-user agent: it is transactional, portable, backup-friendly, and requires no separate database service. Docker does not make SQLite durable by itself; the mounted `data/` directory does.
 
-If the application later runs on multiple machines, uses multiple write workers, or becomes a shared hosted service, migrate the persistence layer to PostgreSQL. The current server has no user authentication and should not be exposed directly to the public internet.
+If the application later runs on multiple machines, uses multiple write workers, or becomes a shared hosted service, migrate the persistence layer to PostgreSQL. The included login is intentionally single-user; it is not a multi-tenant identity system.
 
 ## Tests
 
