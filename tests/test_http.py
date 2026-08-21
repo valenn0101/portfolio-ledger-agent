@@ -184,6 +184,8 @@ class HttpSmokeTests(unittest.TestCase):
         self.assertIn("research-run-status", body)
         self.assertIn("Tus inversiones hoy", body)
         self.assertIn("portfolio-quotes", body)
+        self.assertIn("<th scope=\"col\">Consenso</th>", body)
+        self.assertIn("consensus-modal", body)
 
     def test_research_history_endpoint(self):
         payload = self.get_json("/api/research?limit=5")
@@ -200,6 +202,12 @@ class HttpSmokeTests(unittest.TestCase):
         self.assertEqual("ready", payload["status"])
         self.assertEqual([], payload["positions"])
         self.assertEqual({"quoted": 0, "total": 0}, payload["coverage"])
+
+    def test_empty_portfolio_consensus_endpoint(self):
+        payload = self.get_json("/api/portfolio/consensus")
+
+        self.assertEqual([], payload["positions"])
+        self.assertEqual({"available": 0, "total": 0}, payload["coverage"])
 
 
 if __name__ == "__main__":

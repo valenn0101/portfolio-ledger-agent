@@ -977,6 +977,25 @@ class Database:
         result["payload"] = json.loads(result.pop("payload_json") or "{}")
         return result
 
+    def latest_market_snapshot_for_provider(
+        self, snapshot_type: str, snapshot_key: str, provider: str
+    ) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                """
+                SELECT * FROM market_snapshots
+                WHERE snapshot_type = ? AND snapshot_key = ? AND provider = ?
+                ORDER BY retrieved_at DESC, id DESC
+                LIMIT 1
+                """,
+                (snapshot_type, snapshot_key, provider),
+            ).fetchone()
+        if not row:
+            return None
+        result = dict(row)
+        result["payload"] = json.loads(result.pop("payload_json") or "{}")
+        return result
+
     def save_research_report(
         self,
         *,

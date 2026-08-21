@@ -15,6 +15,8 @@ A local-first investment ledger operated through a conversational Spanish interf
 - Audited amendments that reverse the previous cash effect before applying the corrected movement, preventing duplicate debits or credits.
 - Live portfolio valuation with current price, previous-close movement, weighted-average cost, unrealized gain/loss, and cash-inclusive total.
 - Normalized quote fallback through Twelve Data, Finnhub, Tiingo, and Financial Modeling Prep, with a persistent SQLite cache.
+- A portfolio consensus column with normalized Buy/Strong Buy/Hold/Reduce/Sell labels, median or average analyst target, implied upside/downside, source coverage, and freshness.
+- A responsive analyst modal with low/median/average/high targets, recommendation distribution, provider-by-provider comparison, plan limitations, and paginated individual rating history.
 - Structured adapters for FRED, U.S. Treasury, BLS, and SEC EDGAR.
 - Current web research for an asset, the whole portfolio, a free-form question, or up to five opportunities to investigate.
 - Reports that separate verifiable facts, external consensus, the agent's interpretation, risks, and next steps.
@@ -135,9 +137,10 @@ The research prompt prioritizes free sources by purpose: SEC EDGAR and company i
 
 ```bash
 python3 scripts/check_market_providers.py --pretty
+python3 scripts/check_analyst_sources.py
 ```
 
-The command checks credentials, quote coverage, freshness, cross-provider consistency, a non-U.S. symbol, SEC EDGAR, U.S. Treasury, and BLS. It never prints API keys. For SEC automated access, set `SEC_USER_AGENT` to an application name plus a real contact email, following SEC fair-access guidance.
+The first command checks credentials, quote coverage, freshness, cross-provider consistency, a non-U.S. symbol, SEC EDGAR, U.S. Treasury, and BLS. The second reports which analyst datasets the current FMP, Twelve Data, and Finnhub plans allow, along with response shapes. Neither command prints API keys. For SEC automated access, set `SEC_USER_AGENT` to an application name plus a real contact email, following SEC fair-access guidance.
 
 ## Portfolio valuation
 
@@ -158,6 +161,30 @@ Quotes are cached for 15 minutes and persisted in the `market_quotes` SQLite tab
 USD and USDC are compared at explicit 1:1 parity. Other currency combinations remain unvalued until a foreign-exchange adapter is added.
 
 Structured endpoints are also available at `/api/market/status`, `/api/market/macro`, and `/api/market/sec?symbol=V`. SEC stays marked as not configured until `SEC_USER_AGENT` contains a real contact email.
+
+## Analyst consensus
+
+Consensus loads independently after portfolio prices so an analyst API outage cannot block portfolio valuation. Summary cells show a normalized external label, the median target when available (otherwise the provider average), implied upside or downside versus the current quote, opinion count, and primary source. `Sin cobertura` is a distinct state and is never converted into `Mantener`.
+
+The detail modal keeps provider methodologies separate instead of averaging them together. It shows:
+
+- target low, median, average, and high values;
+- Strong Buy, Buy, Hold, Sell, and Strong Sell counts;
+- the exact provider chosen for the compact cell;
+- every configured provider's coverage, freshness, cache state, and plan limitations;
+- individual grade changes when the subscribed dataset exposes them, loaded 50 rows at a time.
+
+FMP is preferred for target and grade consensus, Finnhub provides a second recommendation trend, and Twelve Data is used when the configured plan allows its analysis endpoints. Price-target news or analyst-level details can require a higher subscription even when aggregate consensus is available. The application preserves the original rating vocabulary in the modal and uses a documented normalized Spanish label only for comparison.
+
+Analyst snapshots are stored in SQLite's `market_snapshots` table for 24 hours by default. Change `ANALYST_CONSENSUS_TTL_SECONDS` if needed. The refresh button bypasses both quote and consensus caches; opening the modal retrieves or reuses the independently cached detail.
+
+The related JSON endpoints are:
+
+- `/api/portfolio/consensus`
+- `/api/market/consensus?symbol=V`
+- `/api/market/consensus?symbol=V&details=1`
+
+These values are external estimates, not guarantees or personalized exit prices. The app deliberately keeps the agent's optional interpretation in the Research section rather than merging it with analyst consensus.
 
 ## Data and privacy
 
@@ -193,7 +220,7 @@ The unit test suite uses temporary databases and workbooks and does not call Ope
 ## Roadmap
 
 - Portfolio goals, entry and exit plans, and risk limits.
-- Recommendation history with timestamps, sources, confidence, and user decisions.
+- Personal entry and exit plans with timestamps, assumptions, and user decisions.
 - Watchlists, alerts, and explicit follow-up signals for each researched asset.
 - Foreign-exchange conversion and explicit exchange/listing selection for international assets.
 

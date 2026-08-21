@@ -12,6 +12,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from xml.etree import ElementTree
 
+from .analyst_consensus import AnalystConsensusService
 from .database import Database
 
 
@@ -175,6 +176,15 @@ class MarketDataService:
         self.quote_ttl_seconds = quote_ttl_seconds
         self.official_ttl_seconds = official_ttl_seconds
         self.transport = transport or HttpTransport(list(self.keys.values()))
+        self.analysts = AnalystConsensusService(
+            database,
+            keys=self.keys,
+            transport=self.transport,
+            ttl_seconds=max(
+                3_600,
+                int(os.getenv("ANALYST_CONSENSUS_TTL_SECONDS", "86400")),
+            ),
+        )
         self._sec_tickers: dict[str, dict[str, Any]] | None = None
 
     def status(self) -> dict[str, Any]:
@@ -207,6 +217,7 @@ class MarketDataService:
             ],
             "sec_contact_configured": "@" in self.sec_user_agent,
             "quote_cache_seconds": self.quote_ttl_seconds,
+            "analyst_consensus": self.analysts.status(),
         }
 
     def get_quote(self, symbol: str, *, refresh: bool = False) -> dict[str, Any]:
@@ -377,6 +388,58 @@ class MarketDataService:
             "warnings": list(dict.fromkeys(warnings)),
             "providers_used": sorted(providers_used),
             "currency_note": currency_note,
+        }
+
+    def analyst_consensus(
+        self,
+        symbol: str,
+        *,
+        refresh: bool = False,
+        details: bool = False,
+    ) -> dict[str, Any]:
+        clean_symbol = self._validate_symbol(symbol)
+        quote = self.db.latest_market_quote(clean_symbol)
+        if quote is None:
+            try:
+                quote = self.get_quote(clean_symbol)
+            except MarketDataError:
+                quote = None
+        return self.analysts.consensus(
+            clean_symbol,
+            current_price=number((quote or {}).get("price")),
+            refresh=refresh,
+            details=details,
+        )
+
+    def portfolio_consensus(self, *, refresh: bool = False) -> dict[str, Any]:
+        positions = self.db.positions()
+        items = []
+        for position in positions:
+            symbol = position["ticker"]
+            quote = self.db.latest_market_quote(symbol)
+            items.append(
+                {
+                    "ticker": symbol,
+                    "quantity": position["quantity"],
+                    "consensus": self.analysts.consensus(
+                        symbol,
+                        current_price=number((quote or {}).get("price")),
+                        refresh=refresh,
+                        details=False,
+                    ),
+                }
+            )
+        return {
+            "generated_at": utc_now(),
+            "positions": items,
+            "coverage": {
+                "available": sum(
+                    1
+                    for item in items
+                    if item["consensus"]["status"] in {"ready", "partial"}
+                ),
+                "total": len(items),
+            },
         }
 
     def macro_snapshot(self, *, refresh: bool = False) -> dict[str, Any]:

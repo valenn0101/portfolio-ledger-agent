@@ -396,6 +396,22 @@ class InvestmentAgentService:
     def portfolio_valuation(self, *, refresh: bool = False) -> dict[str, Any]:
         return self.market.portfolio_valuation(refresh=refresh)
 
+    def portfolio_consensus(self, *, refresh: bool = False) -> dict[str, Any]:
+        return self.market.portfolio_consensus(refresh=refresh)
+
+    def analyst_consensus(
+        self,
+        symbol: str,
+        *,
+        refresh: bool = False,
+        details: bool = False,
+    ) -> dict[str, Any]:
+        return self.market.analyst_consensus(
+            symbol,
+            refresh=refresh,
+            details=details,
+        )
+
     def market_status(self) -> dict[str, Any]:
         return self.market.status()
 
