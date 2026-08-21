@@ -23,6 +23,7 @@ from investor_agent.config import load_env_file  # noqa: E402
 load_env_file(BASE_DIR / ".env")
 
 from investor_agent import InvestmentAgentService  # noqa: E402
+from investor_agent.auth import LoginThrottle, SessionAuth  # noqa: E402
 
 
 DATA_DIR = Path(os.getenv("AGENT_DATA_DIR", str(BASE_DIR / "data")))
@@ -31,6 +32,8 @@ SERVICE = InvestmentAgentService(
     template_path=BASE_DIR / "assets" / "plantilla_base.xlsx",
     workbook_path=DATA_DIR / "movimientos.xlsx",
 )
+AUTH = SessionAuth.from_env()
+LOGIN_THROTTLE = LoginThrottle()
 
 
 def valid_session_id(value: str | None) -> str:
@@ -53,6 +56,28 @@ class AgentHandler(BaseHTTPRequestHandler):
 
         if request.path == "/api/health":
             self._json({"status": "ok"})
+            return
+        if request.path == "/login":
+            if self._is_authenticated():
+                self._redirect("/")
+            else:
+                self._file(BASE_DIR / "static" / "login.html")
+            return
+        if request.path in {"/app.css", "/login.css", "/login.js"}:
+            self._file(BASE_DIR / "static" / request.path.lstrip("/"))
+            return
+        if not self._is_authenticated():
+            self._unauthorized(request.path)
+            return
+
+        if request.path == "/api/session":
+            self._json(
+                {
+                    "authenticated": True,
+                    "auth_enabled": AUTH.enabled,
+                    "username": AUTH.settings.username if AUTH.enabled else None,
+                }
+            )
         elif request.path == "/api/status":
             self._json(SERVICE.status(session_id))
         elif request.path == "/api/movements":
@@ -102,6 +127,45 @@ class AgentHandler(BaseHTTPRequestHandler):
             self._json({"error": "El cuerpo de la solicitud no es válido."}, HTTPStatus.BAD_REQUEST)
             return
 
+        if request.path == "/api/login":
+            if not AUTH.enabled:
+                self._json({"authenticated": True, "auth_enabled": False})
+                return
+            client_id = self.client_address[0]
+            if not LOGIN_THROTTLE.is_allowed(client_id):
+                self._json(
+                    {"error": "Demasiados intentos. Esperá cinco minutos antes de volver a probar."},
+                    HTTPStatus.TOO_MANY_REQUESTS,
+                    headers={"Retry-After": "300"},
+                )
+                return
+            username = str(payload.get("username", ""))
+            password = str(payload.get("password", ""))
+            if not AUTH.authenticate(username, password):
+                LOGIN_THROTTLE.record_failure(client_id)
+                self._json(
+                    {"error": "Usuario o contraseña incorrectos."},
+                    HTTPStatus.UNAUTHORIZED,
+                )
+                return
+            LOGIN_THROTTLE.reset(client_id)
+            secure = AUTH.should_secure_cookie(self.headers.get("X-Forwarded-Proto"))
+            self._json(
+                {"authenticated": True, "username": AUTH.settings.username},
+                headers={"Set-Cookie": AUTH.issue_cookie(username, secure=secure)},
+            )
+            return
+        if request.path == "/api/logout":
+            secure = AUTH.should_secure_cookie(self.headers.get("X-Forwarded-Proto"))
+            self._json(
+                {"authenticated": False},
+                headers={"Set-Cookie": AUTH.clear_cookie(secure=secure)},
+            )
+            return
+        if not self._is_authenticated():
+            self._unauthorized(request.path)
+            return
+
         if request.path == "/api/message":
             session_id = valid_session_id(payload.get("session_id"))
             try:
@@ -148,12 +212,20 @@ class AgentHandler(BaseHTTPRequestHandler):
         raw = self.rfile.read(length)
         return json.loads(raw.decode("utf-8")) if raw else {}
 
-    def _json(self, payload: dict, status: HTTPStatus = HTTPStatus.OK) -> None:
+    def _json(
+        self,
+        payload: dict,
+        status: HTTPStatus = HTTPStatus.OK,
+        headers: dict[str, str] | None = None,
+    ) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self._security_headers()
+        for name, value in (headers or {}).items():
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(body)
 
@@ -166,10 +238,40 @@ class AgentHandler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", mime_type)
         self.send_header("Content-Length", str(len(body)))
+        self._security_headers()
         if download_name:
             self.send_header("Content-Disposition", f'attachment; filename="{download_name}"')
         self.end_headers()
         self.wfile.write(body)
+
+    def _is_authenticated(self) -> bool:
+        return AUTH.is_authenticated(self.headers.get("Cookie"))
+
+    def _unauthorized(self, request_path: str) -> None:
+        if request_path.startswith("/api/"):
+            self._json(
+                {"error": "La sesión no es válida. Volvé a iniciar sesión."},
+                HTTPStatus.UNAUTHORIZED,
+            )
+        else:
+            self._redirect("/login")
+
+    def _redirect(self, location: str) -> None:
+        self.send_response(HTTPStatus.SEE_OTHER)
+        self.send_header("Location", location)
+        self.send_header("Content-Length", "0")
+        self._security_headers()
+        self.end_headers()
+
+    def _security_headers(self) -> None:
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'self'; img-src 'self' data:; style-src 'self'; "
+            "script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'",
+        )
 
     def log_message(self, format: str, *args) -> None:
         if os.getenv("AGENT_VERBOSE") == "1":
