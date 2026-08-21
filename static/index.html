@@ -175,13 +175,14 @@
                 <th scope="col">Inversión</th>
                 <th scope="col">Tenencia</th>
                 <th scope="col">Cotización</th>
+                <th scope="col">Consenso</th>
                 <th scope="col">Hoy</th>
                 <th scope="col">Resultado</th>
                 <th scope="col">Valor actual</th>
               </tr>
             </thead>
             <tbody id="portfolio-quotes">
-              <tr><td colspan="6" class="portfolio-empty">Consultando las cotizaciones guardadas…</td></tr>
+              <tr><td colspan="7" class="portfolio-empty">Consultando las cotizaciones guardadas…</td></tr>
             </tbody>
           </table>
         </div>
@@ -279,6 +280,25 @@
         <p class="research-disclaimer">Las zonas de compra o venta son referencias orientativas basadas en fuentes fechadas, no órdenes ni garantías de rentabilidad. El agente no opera en el broker ni reemplaza tu decisión.</p>
       </article>
     </section>
+
+    <dialog id="consensus-modal" class="consensus-modal" aria-labelledby="consensus-modal-title">
+      <div class="consensus-modal-shell">
+        <header class="consensus-modal-header">
+          <div>
+            <p class="eyebrow">CONSENSO EXTERNO</p>
+            <h2 id="consensus-modal-title">Estimaciones de analistas</h2>
+            <p id="consensus-modal-meta" class="consensus-modal-meta">Cargando datos…</p>
+          </div>
+          <button id="consensus-modal-close" class="modal-close" type="button" aria-label="Cerrar detalle">×</button>
+        </header>
+        <div id="consensus-modal-content" class="consensus-modal-content" aria-live="polite">
+          <p class="portfolio-empty">Cargando el detalle disponible…</p>
+        </div>
+        <footer class="consensus-modal-footer">
+          El objetivo de consenso no es un precio de salida garantizado. Las opiniones del agente se muestran por separado en Investigación.
+        </footer>
+      </div>
+    </dialog>
 
     <footer class="site-footer">
       PORTFOLIO LEDGER AGENT · USO PERSONAL · SIN CONEXIÓN AL BROKER · NO EJECUTA OPERACIONES REALES

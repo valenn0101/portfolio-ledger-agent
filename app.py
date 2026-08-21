@@ -93,6 +93,22 @@ class AgentHandler(BaseHTTPRequestHandler):
             self._json({"sources": SERVICE.research_sources()})
         elif request.path == "/api/portfolio/valuation":
             self._json(SERVICE.portfolio_valuation(refresh=query_flag(query, "refresh")))
+        elif request.path == "/api/portfolio/consensus":
+            self._json(SERVICE.portfolio_consensus(refresh=query_flag(query, "refresh")))
+        elif request.path == "/api/market/consensus":
+            symbol = query.get("symbol", [""])[0]
+            try:
+                self._json(
+                    SERVICE.analyst_consensus(
+                        symbol,
+                        refresh=query_flag(query, "refresh"),
+                        details=query_flag(query, "details"),
+                    )
+                )
+            except ValueError as error:
+                self._json({"error": str(error)}, HTTPStatus.BAD_REQUEST)
+            except RuntimeError as error:
+                self._json({"error": str(error)}, HTTPStatus.BAD_GATEWAY)
         elif request.path == "/api/market/status":
             self._json(SERVICE.market_status())
         elif request.path == "/api/market/macro":

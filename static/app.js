@@ -25,6 +25,9 @@ const researchAdvice = document.getElementById("research-advice");
 const researchSubmit = document.getElementById("research-submit");
 const quoteRefresh = document.getElementById("quote-refresh");
 const logoutButton = document.getElementById("logout-button");
+const consensusModal = document.getElementById("consensus-modal");
+const consensusModalContent = document.getElementById("consensus-modal-content");
+const portfolioConsensus = new Map();
 const researchReports = new Map();
 const defaultDocumentTitle = document.title;
 
@@ -164,11 +167,12 @@ async function loadPortfolioValuation(refresh = false) {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || "No se pudieron cargar las cotizaciones.");
     renderPortfolioValuation(payload);
+    void loadPortfolioConsensus(refresh);
   } catch (error) {
     status.textContent = "Precios no disponibles";
     status.className = "pill warning";
     const container = document.getElementById("portfolio-quotes");
-    container.innerHTML = `<tr><td colspan="6" class="portfolio-empty"></td></tr>`;
+    container.innerHTML = `<tr><td colspan="7" class="portfolio-empty"></td></tr>`;
     container.querySelector("td").textContent = error.message;
   } finally {
     button.disabled = false;
@@ -206,7 +210,7 @@ function renderPortfolioValuation(payload) {
   if (!(payload.positions || []).length) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 6;
+    cell.colSpan = 7;
     cell.className = "portfolio-empty";
     cell.textContent = "Todavía no hay posiciones abiertas para cotizar.";
     row.appendChild(cell);
@@ -216,8 +220,10 @@ function renderPortfolioValuation(payload) {
   }
 
   const providers = (payload.providers_used || []).join(", ") || "sin proveedor";
-  document.getElementById("portfolio-freshness").textContent =
+  const freshness = document.getElementById("portfolio-freshness");
+  freshness.dataset.marketText =
     `Actualizado ${formatResearchDate(payload.generated_at)} · ${providers} · ${coverage.quoted}/${coverage.total} posiciones.`;
+  freshness.textContent = freshness.dataset.marketText;
   document.getElementById("portfolio-currency-note").textContent = payload.currency_note || "Los totales se expresan en USD.";
 
   const warningBox = document.getElementById("portfolio-warnings");
@@ -271,6 +277,10 @@ function portfolioRow(position) {
     price.appendChild(valueWithDetail("—", position.error || "Sin cotización"));
   }
 
+  const consensus = portfolioCell("Consenso", "analyst-consensus-cell");
+  consensus.dataset.consensusSymbol = position.ticker;
+  renderConsensusCell(consensus, portfolioConsensus.get(position.ticker), position.ticker);
+
   const daily = portfolioCell("Hoy", "number-cell");
   daily.appendChild(changeBlock(position.daily_change, position.daily_change_percent));
 
@@ -283,8 +293,411 @@ function portfolioRow(position) {
     position.cost_basis === null ? "Sin base comparable" : `Invertido ${formatMoney(position.cost_basis)} ${position.currency}`,
   ));
 
-  row.append(investment, holding, price, daily, result, value);
+  row.append(investment, holding, price, consensus, daily, result, value);
   return row;
+}
+
+async function loadPortfolioConsensus(refresh = false) {
+  document.querySelectorAll("[data-consensus-symbol]").forEach((cell) => {
+    renderConsensusCell(cell, undefined, cell.dataset.consensusSymbol);
+  });
+  try {
+    const response = await apiFetch(`/api/portfolio/consensus${refresh ? "?refresh=1" : ""}`);
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "No se pudo cargar el consenso.");
+    (payload.positions || []).forEach((position) => {
+      portfolioConsensus.set(position.ticker, position.consensus);
+    });
+    document.querySelectorAll("[data-consensus-symbol]").forEach((cell) => {
+      renderConsensusCell(cell, portfolioConsensus.get(cell.dataset.consensusSymbol), cell.dataset.consensusSymbol);
+    });
+    const freshness = document.getElementById("portfolio-freshness");
+    const base = freshness.dataset.marketText || freshness.textContent;
+    freshness.textContent = `${base} Consenso ${payload.coverage?.available || 0}/${payload.coverage?.total || 0}.`;
+  } catch (error) {
+    document.querySelectorAll("[data-consensus-symbol]").forEach((cell) => {
+      renderConsensusCell(cell, { status: "unavailable", error: error.message }, cell.dataset.consensusSymbol);
+    });
+  }
+}
+
+function renderConsensusCell(cell, consensus, symbol) {
+  cell.replaceChildren();
+  const wrapper = document.createElement("div");
+  wrapper.className = "consensus-cell-content";
+  if (consensus === undefined) {
+    const loading = document.createElement("span");
+    loading.className = "consensus-loading";
+    loading.textContent = "Consultando…";
+    wrapper.appendChild(loading);
+    cell.appendChild(wrapper);
+    return;
+  }
+
+  if (!consensus || !["ready", "partial"].includes(consensus.status)) {
+    const badge = consensusBadge("unrated", consensus?.status === "no_coverage" ? "Sin cobertura" : "No disponible");
+    const detail = document.createElement("small");
+    detail.textContent = consensus?.error || (
+      consensus?.status === "no_coverage"
+        ? "Ninguna fuente cubre este activo"
+        : "Revisá el detalle de proveedores"
+    );
+    const button = consensusDetailButton(symbol, consensus);
+    wrapper.append(badge, detail, button);
+    cell.appendChild(wrapper);
+    return;
+  }
+
+  const ratings = consensus.ratings;
+  const badge = consensusBadge(
+    ratings?.label_code || "unrated",
+    ratings?.label || "Solo precio objetivo",
+  );
+  const target = document.createElement("strong");
+  target.className = "consensus-target";
+  target.textContent = consensus.selected_target
+    ? `Obj. ${formatCurrency(consensus.selected_target, consensus.target?.currency || "USD")}`
+    : "Sin precio objetivo";
+  const potential = document.createElement("span");
+  potential.className = `consensus-potential ${changeClass(consensus.upside_percent)}`;
+  potential.textContent = consensus.upside_percent === null || consensus.upside_percent === undefined
+    ? "Potencial no calculable"
+    : `${formatSignedPercent(consensus.upside_percent)} vs. actual`;
+  const coverage = document.createElement("small");
+  const count = ratings?.total || consensus.target?.analyst_count;
+  const source = consensusProviderName(consensus, consensus.rating_provider || consensus.target_provider);
+  coverage.textContent = `${count ? `${count} opiniones · ` : ""}${source || "fuente externa"}`;
+  wrapper.append(badge, target, potential, coverage, consensusDetailButton(symbol, consensus));
+  cell.appendChild(wrapper);
+}
+
+function consensusBadge(code, label) {
+  const badge = document.createElement("span");
+  badge.className = `consensus-badge ${code || "unrated"}`;
+  badge.textContent = label;
+  return badge;
+}
+
+function consensusDetailButton(symbol, summary) {
+  const button = document.createElement("button");
+  button.className = "consensus-detail-button";
+  button.type = "button";
+  button.textContent = "Ver detalle";
+  button.addEventListener("click", () => openConsensusModal(symbol, summary));
+  return button;
+}
+
+function consensusProviderName(consensus, providerId) {
+  return (consensus?.providers || []).find((provider) => provider.id === providerId)?.name || null;
+}
+
+async function openConsensusModal(symbol, summary) {
+  document.getElementById("consensus-modal-title").textContent = `${symbol} · estimaciones de analistas`;
+  document.getElementById("consensus-modal-meta").textContent = "Cargando fuentes, fechas y opiniones disponibles…";
+  consensusModalContent.replaceChildren();
+  const loading = document.createElement("p");
+  loading.className = "portfolio-empty consensus-modal-loading";
+  loading.textContent = "Consultando el detalle guardado y las fuentes disponibles…";
+  consensusModalContent.appendChild(loading);
+  if (typeof consensusModal.showModal === "function") {
+    consensusModal.showModal();
+  } else {
+    consensusModal.setAttribute("open", "");
+  }
+  try {
+    const response = await apiFetch(`/api/market/consensus?symbol=${encodeURIComponent(symbol)}&details=1`);
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "No se pudo cargar el detalle.");
+    portfolioConsensus.set(symbol, payload);
+    renderConsensusModal(payload);
+    const cell = document.querySelector(`[data-consensus-symbol="${CSS.escape(symbol)}"]`);
+    if (cell) renderConsensusCell(cell, payload, symbol);
+  } catch (error) {
+    consensusModalContent.replaceChildren();
+    const message = document.createElement("p");
+    message.className = "report-warning";
+    message.textContent = error.message;
+    consensusModalContent.appendChild(message);
+    if (summary) consensusModalContent.appendChild(consensusSummaryFallback(summary));
+  }
+}
+
+function renderConsensusModal(consensus) {
+  consensusModalContent.replaceChildren();
+  const meta = document.getElementById("consensus-modal-meta");
+  const available = consensus.provider_coverage?.available || 0;
+  const configured = consensus.provider_coverage?.configured || 0;
+  meta.textContent = `Actualizado ${formatResearchDate(consensus.generated_at)} · ${available}/${configured} fuentes configuradas con datos`;
+
+  consensusModalContent.appendChild(consensusHero(consensus));
+  if (consensus.ratings) {
+    consensusModalContent.appendChild(ratingDistributionPanel(consensus.ratings));
+  }
+  consensusModalContent.appendChild(providerComparisonPanel(consensus.providers || [], consensus.current_price));
+  consensusModalContent.appendChild(analystActionsPanel(consensus.actions || []));
+}
+
+function consensusSummaryFallback(consensus) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "consensus-fallback";
+  const title = document.createElement("strong");
+  title.textContent = consensus.ratings?.label || "Resumen guardado";
+  const detail = document.createElement("p");
+  detail.textContent = consensus.selected_target
+    ? `Objetivo aproximado ${formatCurrency(consensus.selected_target, consensus.target?.currency || "USD")}.`
+    : "El resumen guardado no incluye un precio objetivo.";
+  wrapper.append(title, detail);
+  return wrapper;
+}
+
+function consensusHero(consensus) {
+  const hero = document.createElement("section");
+  hero.className = "consensus-hero";
+  const opinion = document.createElement("div");
+  opinion.className = "consensus-hero-opinion";
+  const label = consensus.ratings?.label || (consensus.target ? "Precio objetivo disponible" : "Sin consenso");
+  opinion.appendChild(consensusBadge(consensus.ratings?.label_code || "unrated", label));
+  const count = document.createElement("strong");
+  count.textContent = consensus.ratings?.total
+    ? `${consensus.ratings.total} opiniones en la fuente principal`
+    : "Sin distribución de recomendaciones";
+  const source = document.createElement("small");
+  source.textContent = consensusProviderName(consensus, consensus.rating_provider) || "Sin fuente principal de recomendación";
+  opinion.append(count, source);
+
+  const target = document.createElement("div");
+  target.className = "consensus-hero-target";
+  const targetLabel = document.createElement("span");
+  targetLabel.textContent = consensus.target?.median ? "Objetivo mediano" : "Objetivo promedio";
+  const targetValue = document.createElement("strong");
+  targetValue.textContent = consensus.selected_target
+    ? formatCurrency(consensus.selected_target, consensus.target?.currency || "USD")
+    : "—";
+  const targetDetail = document.createElement("small");
+  targetDetail.className = changeClass(consensus.upside_percent);
+  targetDetail.textContent = consensus.upside_percent === null || consensus.upside_percent === undefined
+    ? "Sin cotización comparable"
+    : `${formatSignedPercent(consensus.upside_percent)} respecto de ${formatCurrency(consensus.current_price, "USD")}`;
+  target.append(targetLabel, targetValue, targetDetail);
+
+  const range = document.createElement("div");
+  range.className = "consensus-hero-range";
+  const rangeLabel = document.createElement("span");
+  rangeLabel.textContent = "Rango observado";
+  const rangeValue = document.createElement("strong");
+  rangeValue.textContent = consensus.target?.low && consensus.target?.high
+    ? `${formatCurrency(consensus.target.low, "USD")} – ${formatCurrency(consensus.target.high, "USD")}`
+    : "—";
+  const rangeDetail = document.createElement("small");
+  rangeDetail.textContent = consensusProviderName(consensus, consensus.target_provider) || "Sin fuente de precio objetivo";
+  range.append(rangeLabel, rangeValue, rangeDetail);
+  hero.append(opinion, target, range);
+  return hero;
+}
+
+function ratingDistributionPanel(ratings) {
+  const section = document.createElement("section");
+  section.className = "consensus-section";
+  const heading = document.createElement("div");
+  heading.className = "consensus-section-heading";
+  const title = document.createElement("h3");
+  title.textContent = "Distribución de recomendaciones";
+  const total = document.createElement("span");
+  total.textContent = `${ratings.total || 0} opiniones`;
+  heading.append(title, total);
+  section.appendChild(heading);
+  const chart = document.createElement("div");
+  chart.className = "rating-distribution";
+  const categories = [
+    ["strong_buy", "Compra fuerte"],
+    ["buy", "Compra"],
+    ["hold", "Mantener"],
+    ["sell", "Venta"],
+    ["strong_sell", "Venta fuerte"],
+  ];
+  categories.forEach(([key, label]) => {
+    const row = document.createElement("div");
+    row.className = "rating-row";
+    const name = document.createElement("span");
+    name.textContent = label;
+    const track = document.createElement("span");
+    track.className = "rating-track";
+    const bar = document.createElement("span");
+    bar.className = `rating-bar ${key}`;
+    bar.style.width = `${ratings.total ? (Number(ratings[key] || 0) / ratings.total) * 100 : 0}%`;
+    track.appendChild(bar);
+    const value = document.createElement("strong");
+    value.textContent = String(ratings[key] || 0);
+    row.append(name, track, value);
+    chart.appendChild(row);
+  });
+  section.appendChild(chart);
+  return section;
+}
+
+function providerComparisonPanel(providers, currentPrice) {
+  const section = document.createElement("section");
+  section.className = "consensus-section";
+  const heading = document.createElement("div");
+  heading.className = "consensus-section-heading";
+  const title = document.createElement("h3");
+  title.textContent = "Comparación por fuente";
+  const note = document.createElement("span");
+  note.textContent = "No se promedian metodologías distintas";
+  heading.append(title, note);
+  section.appendChild(heading);
+  const grid = document.createElement("div");
+  grid.className = "provider-comparison";
+  providers.forEach((provider) => {
+    const card = document.createElement("article");
+    card.className = `provider-consensus-card ${provider.status}`;
+    const cardHead = document.createElement("div");
+    const name = document.createElement("strong");
+    name.textContent = provider.name;
+    const status = document.createElement("span");
+    status.className = "provider-state";
+    status.textContent = providerStatusLabel(provider.status);
+    cardHead.append(name, status);
+    const target = document.createElement("p");
+    const selected = provider.target?.median || provider.target?.mean;
+    const potential = selected && currentPrice ? (selected / currentPrice - 1) * 100 : null;
+    target.textContent = selected
+      ? `Objetivo ${formatCurrency(selected, provider.target?.currency || "USD")}${potential === null ? "" : ` · ${formatSignedPercent(potential)}`}`
+      : "Sin precio objetivo accesible";
+    const rating = document.createElement("p");
+    rating.textContent = provider.ratings
+      ? `${provider.ratings.label} · ${provider.ratings.total || 0} opiniones`
+      : "Sin recomendación agregada";
+    const date = document.createElement("small");
+    date.textContent = `Consultado ${formatResearchDate(provider.retrieved_at)}${provider.as_of ? ` · período ${formatMarketTimestamp(provider.as_of)}` : ""}${provider.cached ? " · caché" : ""}`;
+    card.append(cardHead, target, rating, date);
+    if ((provider.limitations || []).length || provider.message) {
+      const limitation = document.createElement("small");
+      limitation.className = "provider-limitation";
+      limitation.textContent = (provider.limitations || [provider.message]).filter(Boolean).join(" · ");
+      card.appendChild(limitation);
+    }
+    if (provider.source_url) {
+      const link = document.createElement("a");
+      link.href = provider.source_url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Documentación de la fuente";
+      card.appendChild(link);
+    }
+    grid.appendChild(card);
+  });
+  section.appendChild(grid);
+  return section;
+}
+
+function analystActionsPanel(actions) {
+  const section = document.createElement("section");
+  section.className = "consensus-section analyst-actions-section";
+  const heading = document.createElement("div");
+  heading.className = "consensus-section-heading";
+  const title = document.createElement("h3");
+  title.textContent = "Opiniones y cambios registrados";
+  const count = document.createElement("span");
+  count.textContent = `${actions.length} registros disponibles`;
+  heading.append(title, count);
+  section.appendChild(heading);
+  if (!actions.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "El plan actual no ofrece el detalle individual para este activo.";
+    section.appendChild(empty);
+    return section;
+  }
+
+  const wrap = document.createElement("div");
+  wrap.className = "analyst-actions-table-wrap";
+  const table = document.createElement("table");
+  table.className = "analyst-actions-table";
+  table.innerHTML = "<thead><tr><th>Fecha</th><th>Firma</th><th>Acción</th><th>Opinión / objetivo</th><th>Fuente</th></tr></thead>";
+  const body = document.createElement("tbody");
+  table.appendChild(body);
+  wrap.appendChild(table);
+  section.appendChild(wrap);
+  let shown = 0;
+  const pageSize = 50;
+  const controls = document.createElement("div");
+  controls.className = "analyst-actions-controls";
+  const progress = document.createElement("span");
+  const more = document.createElement("button");
+  more.type = "button";
+  more.className = "ghost-button";
+  more.textContent = "Mostrar 50 más";
+  const appendPage = () => {
+    actions.slice(shown, shown + pageSize).forEach((action) => body.appendChild(analystActionRow(action)));
+    shown = Math.min(actions.length, shown + pageSize);
+    progress.textContent = `Mostrando ${shown} de ${actions.length}`;
+    more.classList.toggle("hidden", shown >= actions.length);
+  };
+  more.addEventListener("click", appendPage);
+  controls.append(progress, more);
+  section.appendChild(controls);
+  appendPage();
+  return section;
+}
+
+function analystActionRow(action) {
+  const row = document.createElement("tr");
+  const dateCell = document.createElement("td");
+  dateCell.dataset.label = "Fecha";
+  dateCell.textContent = formatMarketTimestamp(action.date);
+  const firm = document.createElement("td");
+  firm.dataset.label = "Firma";
+  firm.textContent = action.firm || "No informada";
+  const actionCell = document.createElement("td");
+  actionCell.dataset.label = "Acción";
+  actionCell.textContent = action.action || (action.type === "price_target" ? "Precio objetivo" : "Actualización");
+  const opinion = document.createElement("td");
+  opinion.dataset.label = "Opinión / objetivo";
+  if (action.price_target) {
+    opinion.textContent = formatCurrency(action.price_target, "USD");
+  } else if (action.rating_to) {
+    opinion.textContent = action.rating_from && action.rating_from !== action.rating_to
+      ? `${action.rating_from} → ${action.rating_to}`
+      : action.rating_to;
+  } else {
+    opinion.textContent = action.normalized_label || "—";
+  }
+  const source = document.createElement("td");
+  source.dataset.label = "Fuente";
+  if (action.url) {
+    const link = document.createElement("a");
+    link.href = action.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = providerLabel(action.provider);
+    source.appendChild(link);
+  } else {
+    source.textContent = providerLabel(action.provider);
+  }
+  row.append(dateCell, firm, actionCell, opinion, source);
+  return row;
+}
+
+function providerStatusLabel(status) {
+  return ({
+    ready: "Disponible",
+    partial: "Parcial",
+    no_coverage: "Sin cobertura",
+    restricted: "Requiere otro plan",
+    unavailable: "No disponible",
+    unconfigured: "Sin configurar",
+  })[status] || "Sin verificar";
+}
+
+function formatCurrency(value, currency = "USD") {
+  if (value === null || value === undefined) return "—";
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value));
 }
 
 function portfolioCell(label, className = "") {
@@ -859,6 +1272,10 @@ confirmButton.addEventListener("click", () => sendMessage("confirmar"));
 cancelButton.addEventListener("click", () => sendMessage("cancelar"));
 document.getElementById("help-button").addEventListener("click", () => sendMessage("ayuda"));
 quoteRefresh.addEventListener("click", () => loadPortfolioValuation(true));
+document.getElementById("consensus-modal-close").addEventListener("click", () => consensusModal.close());
+consensusModal.addEventListener("click", (event) => {
+  if (event.target === consensusModal) consensusModal.close();
+});
 
 document.getElementById("settings-form").addEventListener("submit", async (event) => {
   event.preventDefault();
