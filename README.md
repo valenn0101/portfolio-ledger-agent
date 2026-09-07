@@ -1,8 +1,39 @@
 # Portfolio Ledger Agent
 
-A local-first investment ledger operated through a conversational Spanish interface. It turns natural-language messages into reviewable drafts, reports missing fields, and requires explicit confirmation before writing anything.
+A personal side project exploring how AI can make investment tracking easier to use without giving up control over the underlying records.
 
-> Early MVP: it records and audits portfolio activity. It does not connect to a broker or place orders.
+Portfolio Ledger Agent brings a conversational ledger, portfolio valuation, analyst consensus, and source-backed research into one local-first web app. Describe a transaction in Spanish, review the proposed fields, and confirm it before anything is saved.
+
+**Python · Vanilla JavaScript · SQLite · OpenAI Responses API · Docker**
+
+## Why I built it
+
+Tracking a personal portfolio often means switching between spreadsheets, market-data tools, and research notes. I built this project to bring those workflows together while keeping a clear boundary between recorded transactions, external market data, and AI-generated interpretation.
+
+The goal is a useful personal tool and a practical exploration of conversational interfaces, auditable persistence, and AI features that remain reviewable by the user. It does not connect to a broker or execute trades.
+
+## Explore the app
+
+The responsive interface is organized around four tabs:
+
+| Tab | Purpose |
+| --- | --- |
+| **Portfolio — Cartera** | View holdings, available cash, market value, daily changes, unrealized returns, and analyst consensus. |
+| **Transactions — Movimientos** | Describe transactions, review and confirm drafts, inspect recent activity, and download the Excel ledger. |
+| **Research — Investigación** | Investigate an asset, review the portfolio, explore candidates, and revisit saved reports with cited sources. |
+| **Settings — Configuración** | Set a default account and currency, and check the status of local storage, Excel, and AI. |
+
+Navigation stays visible while scrolling. Holdings use a card layout on small screens, and switching tabs preserves form inputs and transaction drafts. Research can finish while another tab is open, with a notification when the result is available. Each holding also offers a shortcut to prepare an asset-specific research query.
+
+The UI is currently in Spanish, reflecting the project's original personal use case; this documentation is in English.
+
+## Engineering decisions
+
+- **Review before persistence.** Natural-language input becomes a draft. Deterministic validation and explicit confirmation sit between extraction and storage.
+- **SQLite as the source of truth.** Confirmed activity is recorded locally, with an audit trail and an Excel copy for convenient review.
+- **Evidence stays separate from interpretation.** Quotes and analyst consensus retain their sources; research distinguishes facts, outside opinions, and the agent's own reading.
+- **A small frontend stack.** HTML, CSS, and vanilla JavaScript keep the interface straightforward, with accessible tab navigation and responsive layouts.
+- **Local-first, with explicit external calls.** Records live locally. AI and market-data features use configured external services; the data flow is documented below.
 
 ## What it includes
 
@@ -27,8 +58,6 @@ A local-first investment ledger operated through a conversational Spanish interf
 - Optional single-user login with signed, expiring, HTTP-only session cookies.
 - Responsive layouts for the chat, portfolio cards, research reports, and login screen.
 - Docker support with persistent local data.
-
-The web interface is currently in Spanish because the first use case is a Spanish-speaking personal portfolio.
 
 ## Conversational registration
 
@@ -208,6 +237,18 @@ Before making a fork public, run `git status --ignored` and confirm that no pers
 SQLite is a good fit for a local, single-user agent: it is transactional, portable, backup-friendly, and requires no separate database service. Docker does not make SQLite durable by itself; the mounted `data/` directory does.
 
 If the application later runs on multiple machines, uses multiple write workers, or becomes a shared hosted service, migrate the persistence layer to PostgreSQL. The included login is intentionally single-user; it is not a multi-tenant identity system.
+
+## Project structure
+
+```text
+app.py                 HTTP server and API routes
+src/investor_agent/    Parsing, ledger, research, market data, and authentication
+static/                Responsive HTML, CSS, and JavaScript interface
+assets/                Demonstration Excel template
+tests/                 Automated tests with temporary data
+scripts/               Optional live provider diagnostics
+data/                  Local runtime records (excluded from Git)
+```
 
 ## Tests
 

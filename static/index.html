@@ -15,126 +15,30 @@
         <p class="subtitle">ASISTENTE PERSONAL DE INVERSIONES</p>
       </div>
       <div class="topbar-actions">
-        <div class="status-pills">
-          <span id="db-status" class="pill ok">Base local</span>
-          <span id="excel-status" class="pill">Excel</span>
-          <span id="ai-status" class="pill">Modo local</span>
-        </div>
+
         <button id="logout-button" class="ghost-button logout-button hidden" type="button">
           Cerrar sesión
         </button>
       </div>
     </header>
 
-    <main class="layout">
-      <section class="card chat-card">
-        <div class="card-heading">
-          <div class="section-title">
-            <span class="section-number">01</span>
-            <h2>Conversación</h2>
-          </div>
-          <button id="help-button" class="ghost-button" type="button">Ayuda</button>
-        </div>
 
-        <div id="messages" class="messages" aria-live="polite">
-          <article class="message assistant">
-            <div class="avatar">PL</div>
-            <div class="bubble">
-              Hola. Podés decirme, por ejemplo: “Compré 3 AAPL a 180 USD en Wallbit”.
-              Antes de guardar te voy a mostrar todos los datos.
-            </div>
-          </article>
-        </div>
+    <nav class="tab-navigation" aria-label="Secciones de la app">
+      <div class="tab-list" role="tablist" aria-label="Secciones">
+        <button id="tab-cartera" type="button" role="tab" aria-controls="panel-cartera" aria-selected="true" tabindex="0" data-tab="cartera">Cartera</button>
+        <button id="tab-movimientos" type="button" role="tab" aria-controls="panel-movimientos" aria-selected="false" tabindex="-1" data-tab="movimientos">Movimientos <span id="movimientos-badge" class="tab-badge" hidden></span></button>
+        <button id="tab-investigacion" type="button" role="tab" aria-controls="panel-investigacion" aria-selected="false" tabindex="-1" data-tab="investigacion">Investigación <span id="investigacion-badge" class="tab-badge" hidden></span></button>
+        <button id="tab-configuracion" type="button" role="tab" aria-controls="panel-configuracion" aria-selected="false" tabindex="-1" data-tab="configuracion">Configuración</button>
+      </div>
+    </nav>
+    <p id="navigation-notice" class="navigation-notice" role="status" aria-live="polite"></p>
 
-        <div class="examples" aria-label="Ejemplos rápidos">
-          <button type="button" data-message="Compré 3 AAPL a 180 USD en Wallbit con 1 de comisión">Compra completa</button>
-          <button type="button" data-message="Vendí 2 Microsoft">Venta incompleta</button>
-          <button type="button" data-message="¿Qué me falta?">Datos faltantes</button>
-          <button type="button" data-message="Resumen de cartera">Mi cartera</button>
-          <button type="button" data-message="Investigá las noticias y el consenso reciente sobre V">Investigar Visa</button>
-        </div>
-
-        <div id="draft-actions" class="draft-actions hidden">
-          <button id="confirm-button" class="primary-button" type="button">Confirmar y guardar</button>
-          <button id="cancel-button" class="danger-button" type="button">Cancelar borrador</button>
-        </div>
-
-        <form id="composer" class="composer">
-          <label class="sr-only" for="message-input">Mensaje</label>
-          <textarea id="message-input" rows="2" placeholder="Ej.: Vendí 2 MSFT a 425 USD en Wallbit ayer"></textarea>
-          <button class="send-button" type="submit" aria-label="Enviar">Enviar</button>
-        </form>
-        <p class="safety-note">Nada se guarda sin tu confirmación. Este módulo no envía órdenes al broker.</p>
-      </section>
-
-      <aside class="side-column">
-        <section class="card summary-card">
-          <div class="card-heading compact">
-            <div>
-              <p class="eyebrow">ESTADO</p>
-              <h2>Tu registro</h2>
-            </div>
-            <a class="ghost-button link-button" href="/api/excel">Descargar Excel</a>
-          </div>
-          <div class="metrics">
-            <div><strong id="movement-count">0</strong><span>confirmados</span></div>
-            <div><strong id="pending-count">0</strong><span>pendientes</span></div>
-            <div><strong id="error-count">0</strong><span>sin copiar</span></div>
-            <div class="cash-metric"><strong id="cash-amount">—</strong><span>efectivo disponible</span></div>
-          </div>
-          <p id="system-note" class="system-note">Verificando archivos…</p>
-        </section>
-
-        <section class="card settings-card">
-          <div class="card-heading compact">
-            <div>
-              <p class="eyebrow">CONFIGURACIÓN</p>
-              <h2>Datos habituales</h2>
-            </div>
-          </div>
-          <p class="small-copy">Si los completás, el agente los propone automáticamente y te avisa que fueron inferidos.</p>
-          <form id="settings-form">
-            <label for="default-account">Cuenta o broker habitual</label>
-            <input id="default-account" name="default_account" placeholder="Ej.: Wallbit" />
-            <label for="default-currency">Moneda habitual</label>
-            <select id="default-currency" name="default_currency">
-              <option value="">Sin definir</option>
-              <option value="USDC">USDC</option>
-              <option value="USD">USD</option>
-              <option value="ARS">ARS</option>
-              <option value="EUR">EUR</option>
-              <option value="BRL">BRL</option>
-            </select>
-            <button class="secondary-button" type="submit">Guardar configuración</button>
-          </form>
-        </section>
-
-        <section class="card history-card">
-          <div class="card-heading compact">
-            <div>
-              <p class="eyebrow">HISTORIAL</p>
-              <h2>Últimos movimientos</h2>
-            </div>
-          </div>
-          <div id="history" class="history-list">
-            <p class="empty-state">Todavía no hay movimientos confirmados.</p>
-          </div>
-        </section>
-
-        <section class="principles-card">
-          <span>CRITERIO</span>
-          <h3>Hechos antes que entusiasmo</h3>
-          <p>El agente separa evidencia, consenso externo y lectura propia. Una oportunidad es una candidata para estudiar, no una compra segura.</p>
-        </section>
-      </aside>
-    </main>
-
-    <section class="portfolio-workspace" aria-labelledby="portfolio-title">
+    <main id="app-content">
+    <section id="panel-cartera" class="portfolio-workspace tab-panel" role="tabpanel" aria-labelledby="tab-cartera" tabindex="0">
       <div class="card portfolio-card">
         <div class="portfolio-heading">
           <div class="section-heading-copy">
             <div class="section-title">
-              <span class="section-number">02</span>
               <h2 id="portfolio-title">Tus inversiones hoy</h2>
             </div>
             <p class="portfolio-subtitle">Precio actual, movimiento diario y resultado contra tu costo promedio.</p>
@@ -145,6 +49,7 @@
           </div>
         </div>
 
+        <p class="cash-summary">Efectivo disponible <strong id="cash-amount">—</strong></p>
         <div class="portfolio-metrics" aria-label="Resumen de valuación">
           <div>
             <span>Inversiones</span>
@@ -194,11 +99,85 @@
       </div>
     </section>
 
-    <section class="research-workspace" aria-labelledby="research-title">
+    <section id="panel-movimientos" class="layout tab-panel" role="tabpanel" aria-labelledby="tab-movimientos" tabindex="0" hidden>
+      <section class="card chat-card">
+        <div class="card-heading">
+          <div class="section-title">
+            <h2>Registrar un movimiento</h2>
+          </div>
+          <button id="help-button" class="ghost-button" type="button">Ayuda</button>
+        </div>
+
+        <div id="messages" class="messages" aria-live="polite">
+          <article class="message assistant">
+            <div class="avatar">PL</div>
+            <div class="bubble">
+              Hola. Podés decirme, por ejemplo: “Compré 3 AAPL a 180 USD en Wallbit”.
+              Antes de guardar te voy a mostrar todos los datos.
+            </div>
+          </article>
+        </div>
+
+        <div class="examples" aria-label="Ejemplos rápidos">
+          <button type="button" data-message="Compré 3 AAPL a 180 USD en Wallbit con 1 de comisión">Compra completa</button>
+          <button type="button" data-message="Vendí 2 Microsoft">Venta incompleta</button>
+          <button type="button" data-message="¿Qué me falta?">Datos faltantes</button>
+          <button type="button" data-message="Resumen de cartera">Mi cartera</button>
+          <button type="button" data-message="Investigá las noticias y el consenso reciente sobre V">Investigar Visa</button>
+        </div>
+
+        <div id="draft-actions" class="draft-actions hidden">
+          <button id="confirm-button" class="primary-button" type="button">Confirmar y guardar</button>
+          <button id="cancel-button" class="danger-button" type="button">Cancelar borrador</button>
+        </div>
+
+        <form id="composer" class="composer">
+          <label class="sr-only" for="message-input">Mensaje</label>
+          <textarea id="message-input" rows="2" placeholder="Ej.: Vendí 2 MSFT a 425 USD en Wallbit ayer"></textarea>
+          <button class="send-button" type="submit" aria-label="Enviar">Enviar</button>
+        </form>
+        <p class="safety-note">Nada se guarda sin tu confirmación. Este módulo no envía órdenes al broker.</p>
+      </section>
+
+      <aside class="side-column">
+        <section class="card summary-card">
+          <div class="card-heading compact">
+            <div>
+              <p class="eyebrow">ESTADO</p>
+              <h2>Tu registro</h2>
+            </div>
+            <a class="ghost-button link-button" href="/api/excel">Descargar Excel</a>
+          </div>
+          <div class="metrics">
+            <div><strong id="movement-count">0</strong><span>confirmados</span></div>
+            <div><strong id="pending-count">0</strong><span>pendientes</span></div>
+            <div><strong id="error-count">0</strong><span>sin copiar</span></div>
+
+          </div>
+          <p id="system-note" class="system-note">Verificando archivos…</p>
+        </section>
+
+
+
+        <section class="card history-card">
+          <div class="card-heading compact">
+            <div>
+              <p class="eyebrow">HISTORIAL</p>
+              <h2>Últimos movimientos</h2>
+            </div>
+          </div>
+          <div id="history" class="history-list">
+            <p class="empty-state">Todavía no hay movimientos confirmados.</p>
+          </div>
+        </section>
+
+      </aside>
+    </section>
+
+    <section id="panel-investigacion" class="research-workspace tab-panel" role="tabpanel" aria-labelledby="tab-investigacion" tabindex="0" hidden>
       <div class="card research-controls">
         <div class="card-heading compact">
           <div class="section-title">
-            <span class="section-number">03</span>
             <h2 id="research-title">Investigación</h2>
           </div>
           <span id="research-status" class="pill">GPT + web</span>
@@ -280,6 +259,44 @@
         <p class="research-disclaimer">Las zonas de compra o venta son referencias orientativas basadas en fuentes fechadas, no órdenes ni garantías de rentabilidad. El agente no opera en el broker ni reemplaza tu decisión.</p>
       </article>
     </section>
+
+    <section id="panel-configuracion" class="settings-workspace tab-panel" role="tabpanel" aria-labelledby="tab-configuracion" tabindex="0" hidden>
+        <section class="card settings-card">
+          <div class="card-heading compact">
+            <div>
+              <p class="eyebrow">CONFIGURACIÓN</p>
+              <h2>Datos habituales</h2>
+            </div>
+          </div>
+          <p class="small-copy">Si los completás, el agente los propone automáticamente y te avisa que fueron inferidos.</p>
+          <form id="settings-form">
+            <label for="default-account">Cuenta o broker habitual</label>
+            <input id="default-account" name="default_account" placeholder="Ej.: Wallbit" />
+            <label for="default-currency">Moneda habitual</label>
+            <select id="default-currency" name="default_currency">
+              <option value="">Sin definir</option>
+              <option value="USDC">USDC</option>
+              <option value="USD">USD</option>
+              <option value="ARS">ARS</option>
+              <option value="EUR">EUR</option>
+              <option value="BRL">BRL</option>
+            </select>
+            <button class="secondary-button" type="submit">Guardar configuración</button>
+            <p id="settings-feedback" class="system-note" role="status" aria-live="polite"></p>
+          </form>
+        </section>
+<section class="card connection-card"><p class="eyebrow">SISTEMA</p><h2>Estado de conexión</h2>        <div class="status-pills">
+          <span id="db-status" class="pill ok">Base local</span>
+          <span id="excel-status" class="pill">Excel</span>
+          <span id="ai-status" class="pill">Modo local</span>
+        </div></section>
+        <section class="principles-card">
+          <span>CRITERIO</span>
+          <h3>Hechos antes que entusiasmo</h3>
+          <p>El agente separa evidencia, consenso externo y lectura propia. Una oportunidad es una candidata para estudiar, no una compra segura.</p>
+        </section>
+    </section>
+    </main>
 
     <dialog id="consensus-modal" class="consensus-modal" aria-labelledby="consensus-modal-title">
       <div class="consensus-modal-shell">

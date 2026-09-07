@@ -473,3 +473,52 @@ textarea:focus, input:focus, select:focus { border-color: var(--teal); box-shado
   .consensus-cell-content { justify-items: start; }
   .site-footer { padding-inline: 12px; }
 }
+
+/* Persistent navigation; each panel keeps its forms and results mounted. */
+[hidden] { display: none !important; }
+.tab-navigation { position: sticky; top: 0; z-index: 10; background: var(--paper); border-bottom: 1px solid var(--line); }
+.tab-list { display: flex; max-width: 1420px; margin: auto; padding: 0 32px; }
+.tab-list button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; padding: 12px 22px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--muted); font: inherit; font-weight: 650; cursor: pointer; }
+.tab-list button[aria-selected="true"] { color: var(--teal-dark); border-bottom-color: var(--teal); background: var(--mint); }
+.tab-list button:hover { color: var(--teal-dark); }
+:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+.tab-badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 50%; background: var(--teal); color: white; font-size: .65rem; }
+.navigation-notice { max-width: 1356px; margin: 0 auto; padding: 12px 24px; background: var(--mint); color: var(--teal-dark); font-size: .85rem; }
+.navigation-notice:empty { display: none; }
+.tab-panel { scroll-margin-top: 80px; }
+.layout.tab-panel, .portfolio-workspace.tab-panel, .research-workspace.tab-panel, .settings-workspace { padding: 36px 32px 56px; border-top: 0; min-height: 65vh; }
+.portfolio-card { border-top: 0; padding-top: 0; }
+.cash-summary { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 22px 0 0; color: var(--muted); }
+.cash-summary strong { color: var(--ink); overflow-wrap: anywhere; }
+.settings-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: start; gap: 32px 64px; max-width: 1100px; margin: auto; }
+.settings-workspace .settings-card { margin: 0; }
+.connection-card .status-pills { justify-content: flex-start; flex-wrap: wrap; gap: 20px; padding-top: 24px; }
+.settings-workspace .principles-card { grid-column: 1 / -1; max-width: 640px; }
+.asset-research-button { justify-self: start; min-height: 44px; padding: 8px 0; border: 0; background: transparent; color: var(--teal-dark); text-decoration: underline; text-underline-offset: 3px; font-size: .75rem; cursor: pointer; }
+.research-result-card { scroll-margin-top: 84px; }
+@media (max-width: 930px) {
+  .tab-list button { flex: 1; padding-inline: 12px; }
+  .settings-workspace { gap: 32px; }
+}
+@media (max-width: 600px) {
+  .topbar { padding-top: max(16px, env(safe-area-inset-top)); gap: 12px; }
+  h1 { font-size: 1.7rem; }
+  .topbar-actions:has(.logout-button.hidden) { display: none; }
+  .tab-list { padding: 0; }
+  .tab-list button { position: relative; min-width: 0; min-height: 56px; padding: 12px 3px; font-size: clamp(.65rem, 2.8vw, .82rem); }
+  .tab-badge { position: absolute; top: 2px; right: 4px; min-width: 14px; height: 14px; font-size: .58rem; }
+  .layout.tab-panel, .portfolio-workspace.tab-panel, .research-workspace.tab-panel, .settings-workspace { padding: 24px 16px max(36px, env(safe-area-inset-bottom)); }
+  .settings-workspace { grid-template-columns: minmax(0, 1fr); }
+  .navigation-notice { padding: 12px 16px; }
+  .asset-research-button { justify-self: end; }
+  .portfolio-identity, .portfolio-cell-value { min-width: 0; overflow-wrap: anywhere; }
+  .research-presets button, .research-history-item, .examples button, .secondary-button { min-height: 44px; }
+  .connection-card .status-pills { gap: 12px; }
+}
+@media (max-width: 380px) {
+  .layout.tab-panel, .portfolio-workspace.tab-panel, .research-workspace.tab-panel, .settings-workspace { padding-inline: 12px; }
+  .asset-research-button { justify-self: start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

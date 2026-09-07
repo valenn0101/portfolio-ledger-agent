@@ -31,6 +31,51 @@ const portfolioConsensus = new Map();
 const researchReports = new Map();
 const defaultDocumentTitle = document.title;
 
+const tabs = [...document.querySelectorAll("[role=tab]")];
+let activeTab = "cartera";
+let researchRunning = false;
+
+function selectTab(name, updateHash = true) {
+  if (!tabs.some((tab) => tab.dataset.tab === name)) name = "cartera";
+  activeTab = name;
+  tabs.forEach((tab) => {
+    const selected = tab.dataset.tab === name;
+    tab.setAttribute("aria-selected", String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    document.getElementById(tab.getAttribute("aria-controls")).hidden = !selected;
+  });
+  if (updateHash) history.replaceState(null, "", `#${name}`);
+  if (name === "investigacion" && !researchRunning) {
+    document.getElementById("investigacion-badge").hidden = true;
+    document.getElementById("navigation-notice").textContent = "";
+  }
+}
+
+tabs.forEach((tab, index) => {
+  tab.addEventListener("click", () => selectTab(tab.dataset.tab));
+  tab.addEventListener("keydown", (event) => {
+    let next;
+    if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
+    if (event.key === "ArrowLeft") next = (index + tabs.length - 1) % tabs.length;
+    if (event.key === "Home") next = 0;
+    if (event.key === "End") next = tabs.length - 1;
+    if (next === undefined) return;
+    event.preventDefault();
+    selectTab(tabs[next].dataset.tab);
+    tabs[next].focus();
+  });
+});
+window.addEventListener("hashchange", () => selectTab(location.hash.slice(1), false));
+selectTab(location.hash.slice(1), false);
+
+function notifyResearch(message, running = false) {
+  const badge = document.getElementById("investigacion-badge");
+  badge.textContent = running ? "…" : "!";
+  badge.hidden = !running && activeTab === "investigacion";
+  badge.setAttribute("aria-label", message);
+  document.getElementById("navigation-notice").textContent = activeTab === "investigacion" ? "" : message;
+}
+
 async function apiFetch(input, init) {
   const response = await fetch(input, init);
   if (response.status === 401) {
@@ -100,6 +145,7 @@ async function sendMessage(text) {
     if (!response.ok) throw new Error(result.error || "No se pudo procesar el mensaje.");
     if (result.kind === "research") {
       renderResearch(result);
+      notifyResearch("Investigación guardada. Podés verla en Investigación.");
       addMessage("assistant", `Preparé y guardé la investigación #${result.id}. El informe completo y sus fuentes están en la sección Investigación.`);
       await loadResearchHistory();
     } else {
@@ -112,7 +158,7 @@ async function sendMessage(text) {
     addMessage("assistant", `No pude completar esa acción: ${error.message}`);
   } finally {
     setBusy(false);
-    input.focus();
+    if (activeTab === "movimientos") input.focus();
   }
 }
 
@@ -144,7 +190,7 @@ async function refreshDashboard() {
   const researchStatus = document.getElementById("research-status");
   researchStatus.textContent = status.research_enabled ? "GPT + web listo" : "Falta API key";
   researchStatus.className = `pill ${status.research_enabled ? "ok" : "warning"}`;
-  researchSubmit.disabled = !status.research_enabled;
+  researchSubmit.disabled = researchRunning || !status.research_enabled;
 
   document.getElementById("system-note").textContent = status.excel_error
     ? `La base local funciona. Excel informa: ${status.excel_error}`
@@ -152,6 +198,10 @@ async function refreshDashboard() {
 
   draftActions.classList.toggle("hidden", !status.pending);
   confirmButton.classList.toggle("hidden", !status.pending || status.pending_missing.length > 0);
+  const pendingBadge = document.getElementById("movimientos-badge");
+  pendingBadge.textContent = "1";
+  pendingBadge.hidden = !status.pending;
+  pendingBadge.setAttribute("aria-label", "Un borrador pendiente de confirmar");
   input.placeholder = status.pending ? correctionPlaceholder : movementPlaceholder;
   renderHistory(history.movements || []);
 }
@@ -259,6 +309,18 @@ function portfolioRow(position) {
     allocation.textContent = `${formatNumber(position.allocation_percent, 1)}% de inversiones`;
     identity.appendChild(allocation);
   }
+  const investigate = document.createElement("button");
+  investigate.type = "button";
+  investigate.className = "asset-research-button";
+  investigate.textContent = "Investigar activo";
+  investigate.setAttribute("aria-label", `Investigar ${position.ticker}`);
+  investigate.addEventListener("click", () => {
+    researchType.value = "asset";
+    researchQuery.value = `Analizá ${position.ticker}: resultados recientes, valuación, consenso y riesgos.`;
+    selectTab("investigacion");
+    researchQuery.focus();
+  });
+  identity.appendChild(investigate);
   investment.appendChild(identity);
 
   const holding = portfolioCell("Tenencia", "number-cell");
@@ -914,7 +976,9 @@ function renderResearch(report) {
     completion.detail,
     report.duration_ms,
   );
-  document.querySelector(".research-result-card").scrollIntoView({ behavior: "smooth", block: "start" });
+  if (activeTab === "investigacion") {
+    document.querySelector(".research-result-card").scrollIntoView({ behavior: "auto", block: "start" });
+  }
 }
 
 function researchCompletionInfo(report) {
@@ -1154,11 +1218,14 @@ function formatResearchDate(value) {
 }
 
 async function runResearch(query, type) {
+  if (researchRunning) return;
   const clean = query.trim();
   if (!clean) {
     researchQuery.focus();
     return;
   }
+  researchRunning = true;
+  notifyResearch("Investigación en curso.", true);
   researchSubmit.disabled = true;
   researchSubmit.textContent = "Investigando…";
   const startedAt = Date.now();
@@ -1196,6 +1263,7 @@ async function runResearch(query, type) {
     if (!response.ok) throw new Error(result.error || "No se pudo completar la investigación.");
     window.clearInterval(progressTimer);
     renderResearch(result);
+    notifyResearch(result.status === "incomplete" ? "La investigación quedó incompleta. Revisá el informe en Investigación." : "Investigación terminada. El informe está disponible en Investigación.");
     if (result.status === "incomplete") {
       document.title = `⚠ Investigación incompleta · ${defaultDocumentTitle}`;
       addMessage("assistant", `La investigación #${result.id} quedó guardada, pero OpenAI no la marcó como completa. La sección Investigación muestra el motivo.`);
@@ -1205,6 +1273,7 @@ async function runResearch(query, type) {
     }
     await loadResearchHistory();
   } catch (error) {
+    notifyResearch("La investigación falló. Revisá el detalle en Investigación.");
     document.title = `Error de investigación · ${defaultDocumentTitle}`;
     document.getElementById("research-result-title").textContent = "No se pudo completar";
     completionBadge.className = "report-status incomplete";
@@ -1215,6 +1284,7 @@ async function runResearch(query, type) {
     setResearchRunState("error", "La investigación falló", error.message, Date.now() - startedAt);
   } finally {
     window.clearInterval(progressTimer);
+    researchRunning = false;
     researchSubmit.disabled = false;
     researchSubmit.textContent = "Investigar con fuentes";
   }
@@ -1280,14 +1350,25 @@ consensusModal.addEventListener("click", (event) => {
 document.getElementById("settings-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
-  const response = await apiFetch("/api/settings", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(Object.fromEntries(form.entries())),
-  });
-  const result = await response.json();
-  addMessage("assistant", result.message || "Configuración guardada.");
-  await refreshDashboard();
+  const button = event.currentTarget.querySelector("button");
+  const feedback = document.getElementById("settings-feedback");
+  button.disabled = true;
+  feedback.textContent = "Guardando…";
+  try {
+    const response = await apiFetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(Object.fromEntries(form.entries())),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "No se pudo guardar la configuración.");
+    feedback.textContent = result.message || "Configuración guardada.";
+    await refreshDashboard();
+  } catch (error) {
+    feedback.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
 });
 
 researchForm.addEventListener("submit", (event) => {
