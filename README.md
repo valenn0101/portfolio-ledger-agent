@@ -6,6 +6,10 @@ I built this side project to bring spreadsheets, market data, and research notes
 
 **Python · Vanilla JavaScript · SQLite · OpenAI Responses API · Docker**
 
+![Portfolio overview with fictional holdings](docs/screenshots/preview.png)
+
+*Demo portfolio with fictional holdings and prices; no personal financial records are shown.*
+
 ## What it does
 
 - **Portfolio:** holdings, cash, daily performance, and analyst consensus.
